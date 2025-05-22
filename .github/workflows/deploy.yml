@@ -7,20 +7,37 @@ on:
 
 jobs:
   deploy:
-    name: Deploy on push to main
+    name: Deploy Vue App
     runs-on: ubuntu-latest
 
     steps:
+      # 1. Comprova el codi font
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2. Configura Node.js i instal·la les dependències
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'  # Pots ajustar la versió de Node.js
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend  # La carpeta on tens el projecte Vue
+
+      # 3. Crear el build de l'aplicació Vue
+      - name: Build Vue app
+        run: npm run build
+        working-directory: frontend  # La carpeta on tens el projecte Vue
+
+      # 4. Configura SSH per al desplegament
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy using rsync over SSH
+      # 5. Desplegar la carpeta 'dist' al servidor de producció
+      - name: Deploy Vue app to production
         run: |
-          rsync -avz --delete \
-            -e "ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_PORT }}" \
-            ./ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:${{ secrets.REMOTE_TARGET }}
+          rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no -p ${{ secrets.REMOTE_PORT }}" \
+            frontend/dist/ ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }}:${{ secrets.REMOTE_TARGET }}
